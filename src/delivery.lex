@@ -46,7 +46,7 @@ fn jstr(j :: jv.Json, key :: Str) -> Str {
 
 # Plan the day's route by proxying the request to lex-routing's VRP solver, then
 # stamp a `delivery.plan` event on the trail so the plan is auditable.
-fn handle_plan(c :: ctx.Ctx, db :: Db, routing_url :: Str) -> [io, time, crypto, random, sql, fs_read, fs_write, net, concurrent, llm, proc] resp.Response {
+fn handle_plan(c :: ctx.Ctx, db :: Db, routing_url :: Str) -> [io, time, crypto, random, sql, fs_read, fs_write, net, concurrent, llm, proc, approval] resp.Response {
   if str.is_empty(routing_url) {
     resp.json_status(503, "{\"error\":\"routing service not configured (ROUTING_URL unset)\"}")
   } else {
@@ -74,7 +74,7 @@ fn handle_plan(c :: ctx.Ctx, db :: Db, routing_url :: Str) -> [io, time, crypto,
 }
 
 # Record proof-of-delivery (or a failed attempt) as a tamper-evident trail event.
-fn handle_pod(c :: ctx.Ctx, db :: Db) -> [io, time, crypto, random, sql, fs_read, fs_write, net, concurrent, llm, proc] resp.Response {
+fn handle_pod(c :: ctx.Ctx, db :: Db) -> [io, time, crypto, random, sql, fs_read, fs_write, net, concurrent, llm, proc, approval] resp.Response {
   match jv.parse(c.body) {
     Err(_) => resp.bad_request("{\"error\":\"invalid json\"}"),
     Ok(j) => {
@@ -98,10 +98,10 @@ fn handle_pod(c :: ctx.Ctx, db :: Db) -> [io, time, crypto, random, sql, fs_read
 }
 
 fn mount(r :: router.Router, db :: Db, routing_url :: Str) -> router.Router {
-  let with_plan := router.route_effectful(r, "POST", "/delivery/plan", fn (c :: ctx.Ctx) -> [io, time, crypto, random, sql, fs_read, fs_write, net, concurrent, llm, proc] resp.Response {
+  let with_plan := router.route_effectful(r, "POST", "/delivery/plan", fn (c :: ctx.Ctx) -> [io, time, crypto, random, sql, fs_read, fs_write, net, concurrent, llm, proc, approval] resp.Response {
     handle_plan(c, db, routing_url)
   })
-  router.route_effectful(with_plan, "POST", "/delivery/pod", fn (c :: ctx.Ctx) -> [io, time, crypto, random, sql, fs_read, fs_write, net, concurrent, llm, proc] resp.Response {
+  router.route_effectful(with_plan, "POST", "/delivery/pod", fn (c :: ctx.Ctx) -> [io, time, crypto, random, sql, fs_read, fs_write, net, concurrent, llm, proc, approval] resp.Response {
     handle_pod(c, db)
   })
 }
